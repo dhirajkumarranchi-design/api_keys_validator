@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeyScan v2.0 — API Key Validator & Bulk Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#08090d;--surface:#0f1117;--surface2:#161820;--border:#1e2130;--border-glow:#2a3050;
+    --text:#e8eaf2;--text-dim:#5a607a;--text-mid:#8890a8;
+    --accent:#4f7cff;--accent-glow:rgba(79,124,255,0.15);--accent-dim:rgba(79,124,255,0.06);
+    --green:#23d18b;--green-glow:rgba(35,209,139,0.15);
+    --red:#ff4f6e;--red-glow:rgba(255,79,110,0.15);
+    --yellow:#f5c542;--yellow-glow:rgba(245,197,66,0.15);
+    --orange:#ff8c42;--purple:#a78bfa;--teal:#2dd4bf;--pink:#f472b6;--cyan:#22d3ee;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(79,124,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(79,124,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  body::after{content:'';position:fixed;top:-50%;left:50%;transform:translateX(-50%);width:900px;height:700px;background:radial-gradient(ellipse at center,rgba(79,124,255,0.05) 0%,transparent 70%);pointer-events:none;z-index:0}
+  .page{width:100%;max-width:760px;padding:56px 24px 100px;position:relative;z-index:1}
+
+  /* Header */
+  .header{text-align:center;margin-bottom:44px;animation:fadeDown 0.6s ease both}
+  .logo-mark{display:inline-flex;align-items:center;gap:10px;margin-bottom:18px}
+  .logo-icon{width:36px;height:36px}.logo-icon svg{width:100%;height:100%}
+  .logo-text{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;letter-spacing:-0.5px;color:var(--text)}
+  .logo-text span{color:var(--accent)}
+  h1{font-family:'Syne',sans-serif;font-weight:700;font-size:clamp(26px,5vw,40px);line-height:1.1;letter-spacing:-1.5px;margin-bottom:10px;background:linear-gradient(135deg,#e8eaf2 0%,#8890a8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .subtitle{font-size:12px;color:var(--text-dim);letter-spacing:0.5px}
+  .provider-count-badge{display:inline-flex;align-items:center;gap:6px;background:var(--accent-dim);border:1px solid rgba(79,124,255,0.2);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--accent);margin-top:10px;letter-spacing:0.5px}
+
+  /* Input card */
+  .input-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;margin-bottom:16px;animation:fadeUp 0.6s ease 0.1s both;position:relative;overflow:hidden}
+  .input-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0.4}
+  .input-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .input-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .detected-pill{margin-left:auto;font-size:10px;padding:2px 10px;border-radius:20px;border:1px solid rgba(79,124,255,0.3);background:var(--accent-dim);color:var(--accent);opacity:0;transition:opacity 0.3s;text-transform:none;letter-spacing:0.5px;font-weight:500}
+  .detected-pill.show{opacity:1}
+  .key-input-wrap{position:relative;display:flex;gap:12px;align-items:stretch}
+  .key-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 48px 14px 16px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:0.5px;outline:none;transition:border-color 0.2s,box-shadow 0.2s;width:100%}
+  .key-input::placeholder{color:var(--text-dim)}
+  .key-input:focus{border-color:var(--border-glow);box-shadow:0 0 0 3px var(--accent-dim),inset 0 1px 3px rgba(0,0,0,0.3)}
+  .toggle-vis{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-dim);padding:4px;display:flex;transition:color 0.2s}
+  .toggle-vis:hover{color:var(--text-mid)}
+  .scan-btn{background:var(--accent);border:none;border-radius:10px;padding:14px 24px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:0.5px;cursor:pointer;white-space:nowrap;position:relative;overflow:hidden;transition:transform 0.15s,box-shadow 0.2s;box-shadow:0 4px 20px rgba(79,124,255,0.35)}
+  .scan-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.15) 0%,transparent 60%);pointer-events:none}
+  .scan-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px rgba(79,124,255,0.5)}
+  .scan-btn:active:not(:disabled){transform:translateY(0)}
+  .scan-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none;box-shadow:none}
+
+  /* Provider browser */
+  .providers-toggle{width:100%;background:none;border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;margin-top:14px;transition:color 0.2s,border-color 0.2s;letter-spacing:0.5px}
+  .providers-toggle:hover{color:var(--text-mid);border-color:var(--border-glow)}
+  .providers-toggle .arrow{margin-left:auto;transition:transform 0.2s}
+  .providers-toggle.open .arrow{transform:rotate(180deg)}
+  .providers-grid-wrap{display:none;margin-top:12px}
+  .providers-grid-wrap.open{display:block}
+  .providers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+  .provider-chip{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;transition:all 0.2s;display:flex;flex-direction:column;gap:3px}
+  .provider-chip:hover{border-color:var(--border-glow);background:rgba(255,255,255,0.03)}
+  .chip-name{font-size:11px;color:var(--text);font-weight:500;font-family:'Syne',sans-serif}
+  .chip-prefix{font-size:9px;color:var(--text-dim);letter-spacing:0.5px}
+
+  /* Scan progress */
+  .scan-progress{display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;margin-bottom:16px;animation:fadeUp 0.4s ease both}
+  .scan-progress.visible{display:block}
+  .scanning-bar{height:2px;background:rgba(79,124,255,0.15);border-radius:2px;margin-bottom:20px;overflow:hidden;position:relative}
+  .scanning-bar::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scanLine 1.2s ease-in-out infinite}
+  .scan-steps{display:flex;flex-direction:column;gap:10px}
+  .scan-step{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text-dim);transition:color 0.3s}
+  .scan-step.active{color:var(--text)}.scan-step.done{color:var(--green)}.scan-step.error-step{color:var(--red)}.scan-step.warn-step{color:var(--yellow)}
+  .step-icon{width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;transition:all 0.3s}
+  .scan-step.active .step-icon{border-color:var(--accent);color:var(--accent);animation:spinPulse 1s linear infinite}
+  .scan-step.done .step-icon{background:var(--green);border-color:var(--green);color:#08090d}
+  .scan-step.error-step .step-icon{background:var(--red);border-color:var(--red);color:#fff}
+  .scan-step.warn-step .step-icon{background:var(--yellow);border-color:var(--yellow);color:#08090d}
+
+  /* Result card */
+  .result-card{display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;animation:fadeUp 0.5s ease both;margin-bottom:16px}
+  .result-card.visible{display:block}
+  .result-header{padding:22px 26px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border);position:relative}
+  .result-header.status-ok{background:linear-gradient(135deg,rgba(35,209,139,0.07) 0%,transparent 60%)}
+  .result-header.status-ok::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--green)}
+  .result-header.status-fail{background:linear-gradient(135deg,rgba(255,79,110,0.07) 0%,transparent 60%)}
+  .result-header.status-fail::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red)}
+  .result-header.status-warn{background:linear-gradient(135deg,rgba(245,197,66,0.07) 0%,transparent 60%)}
+  .result-header.status-warn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--yellow)}
+  .status-badge{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+  .status-badge.ok{background:var(--green-glow)}.status-badge.fail{background:var(--red-glow)}.status-badge.warn{background:var(--yellow-glow)}
+  .result-title{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;margin-bottom:3px}
+  .result-subtitle{font-size:11px;color:var(--text-dim);letter-spacing:0.5px}
+  .result-body{padding:22px 26px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .result-field{display:flex;flex-direction:column;gap:5px}
+  .result-field.full{grid-column:1/-1}
+  .field-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)}
+  .field-value{font-size:13px;color:var(--text);font-weight:500}
+  .field-value.mono{font-family:'IBM Plex Mono',monospace;font-size:12px;word-break:break-all}
+  .field-value.ok-color{color:var(--green)}.field-value.fail-color{color:var(--red)}.field-value.warn-color{color:var(--yellow)}.field-value.dim{color:var(--text-mid)}
+  .error-block{background:var(--red-glow);border:1px solid rgba(255,79,110,0.2);border-radius:10px;padding:14px 16px;font-size:12px;color:#ff8fa3;line-height:1.6;font-style:italic}
+
+  /* Provider tags */
+  .provider-tag{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.5px;border:1px solid}
+  .provider-tag.openai{background:rgba(35,209,139,0.1);border-color:rgba(35,209,139,0.3);color:var(--green)}
+  .provider-tag.anthropic{background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.3);color:var(--purple)}
+  .provider-tag.google{background:rgba(79,124,255,0.1);border-color:rgba(79,124,255,0.3);color:var(--accent)}
+  .provider-tag.perplexity{background:rgba(45,212,191,0.1);border-color:rgba(45,212,191,0.3);color:var(--teal)}
+  .provider-tag.nvidia{background:rgba(35,209,139,0.1);border-color:rgba(35,209,139,0.3);color:var(--green)}
+  .provider-tag.xai{background:rgba(255,79,110,0.1);border-color:rgba(255,79,110,0.3);color:var(--red)}
+  .provider-tag.groq{background:rgba(255,140,66,0.1);border-color:rgba(255,140,66,0.3);color:var(--orange)}
+  .provider-tag.together{background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.3);color:var(--purple)}
+  .provider-tag.huggingface{background:rgba(245,197,66,0.1);border-color:rgba(245,197,66,0.3);color:var(--yellow)}
+  .provider-tag.cohere{background:rgba(255,140,66,0.1);border-color:rgba(255,140,66,0.3);color:var(--orange)}
+  .provider-tag.mistral{background:rgba(245,197,66,0.1);border-color:rgba(245,197,66,0.3);color:var(--yellow)}
+  .provider-tag.deepseek{background:rgba(79,124,255,0.1);border-color:rgba(79,124,255,0.3);color:var(--accent)}
+  .provider-tag.fireworks{background:rgba(255,140,66,0.1);border-color:rgba(255,140,66,0.3);color:var(--orange)}
+  .provider-tag.replicate{background:rgba(244,114,182,0.1);border-color:rgba(244,114,182,0.3);color:var(--pink)}
+  .provider-tag.openrouter{background:rgba(34,211,238,0.1);border-color:rgba(34,211,238,0.3);color:var(--cyan)}
+  .provider-tag.stability{background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.3);color:var(--purple)}
+  .provider-tag.elevenlabs{background:rgba(244,114,182,0.1);border-color:rgba(244,114,182,0.3);color:var(--pink)}
+  .provider-tag.voyage{background:rgba(45,212,191,0.1);border-color:rgba(45,212,191,0.3);color:var(--teal)}
+  .provider-tag.ai21{background:rgba(255,140,66,0.1);border-color:rgba(255,140,66,0.3);color:var(--orange)}
+  .provider-tag.alephalpha{background:rgba(34,211,238,0.1);border-color:rgba(34,211,238,0.3);color:var(--cyan)}
+  .provider-tag.azure{background:rgba(79,124,255,0.1);border-color:rgba(79,124,255,0.3);color:var(--accent)}
+  .provider-tag.aws,.provider-tag.aws_secret{background:rgba(245,197,66,0.1);border-color:rgba(245,197,66,0.3);color:var(--yellow)}
+  .provider-tag.unknown{background:rgba(90,96,122,0.2);border-color:rgba(90,96,122,0.3);color:var(--text-mid)}
+
+  /* Raw toggle */
+  .raw-toggle{width:100%;background:none;border:none;border-top:1px solid var(--border);padding:13px 26px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;transition:color 0.2s,background 0.2s;letter-spacing:0.5px}
+  .raw-toggle:hover{color:var(--text-mid);background:rgba(255,255,255,0.02)}
+  .raw-toggle svg{transition:transform 0.2s}.raw-toggle.open svg{transform:rotate(180deg)}
+  .raw-content{display:none;padding:0 26px 18px}.raw-content.open{display:block}
+  .raw-pre{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:10px;color:var(--text-dim);overflow-x:auto;line-height:1.7;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto}
+
+  /* History */
+  .history-section{animation:fadeUp 0.6s ease 0.2s both}
+  .section-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+  .section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+  .history-list{display:flex;flex-direction:column;gap:8px}
+  .history-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color 0.2s,background 0.2s;animation:fadeUp 0.3s ease both}
+  .history-item:hover{border-color:var(--border-glow);background:var(--surface2)}
+  .h-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .h-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}.h-dot.fail{background:var(--red);box-shadow:0 0 6px var(--red)}.h-dot.warn{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+  .h-key{flex:1;font-size:12px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .h-provider{font-size:10px;color:var(--text-dim);flex-shrink:0}.h-time{font-size:10px;color:var(--text-dim);flex-shrink:0}
+  .clear-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s;margin-left:auto;display:flex}
+  .clear-btn:hover{color:var(--red);border-color:var(--red)}
+
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes spinPulse{0%{transform:rotate(0deg);opacity:1}50%{opacity:0.5}100%{transform:rotate(360deg);opacity:1}}
+  @keyframes scanLine{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+  @media(max-width:520px){
+    .result-body{grid-template-columns:1fr}.result-field.full{grid-column:1}
+    .key-input-wrap{flex-direction:column}.scan-btn{width:100%}
+    .providers-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+  }
+
+  /* ── Mode Tabs ── */
+  .mode-tabs{display:flex;gap:8px;margin-bottom:16px;animation:fadeDown 0.5s ease 0.05s both}
+  .mode-tab{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 0;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;text-align:center}
+  .mode-tab:hover{color:var(--text-mid);border-color:var(--border-glow)}
+  .mode-tab.active{background:var(--accent-dim);border-color:rgba(79,124,255,0.4);color:var(--accent)}
+  /* ── Bulk card ── */
+  .bulk-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;margin-bottom:16px;position:relative;overflow:hidden;display:none}
+  .bulk-card.visible{display:block;animation:fadeUp 0.6s ease both}
+  .bulk-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--purple),transparent);opacity:0.4}
+  .bulk-textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.3px;outline:none;resize:vertical;min-height:160px;line-height:1.7;transition:border-color 0.2s,box-shadow 0.2s}
+  .bulk-textarea::placeholder{color:var(--text-dim)}
+  .bulk-textarea:focus{border-color:var(--border-glow);box-shadow:0 0 0 3px var(--accent-dim)}
+  .bulk-actions{display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap}
+  .bulk-scan-btn{background:var(--purple);border:none;border-radius:10px;padding:12px 22px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 20px rgba(167,139,250,0.3);white-space:nowrap}
+  .bulk-scan-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 28px rgba(167,139,250,0.5)}
+  .bulk-scan-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+  .bulk-clear-btn{background:none;border:1px solid var(--border);border-radius:10px;padding:12px 18px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.2s}
+  .bulk-clear-btn:hover{color:var(--text-mid);border-color:var(--border-glow)}
+  .file-upload-label{display:flex;align-items:center;gap:8px;background:none;border:1px dashed rgba(79,124,255,0.3);border-radius:10px;padding:11px 16px;color:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;white-space:nowrap}
+  .file-upload-label:hover{background:var(--accent-dim);border-color:rgba(79,124,255,0.5)}
+  #fileUploadInput{display:none}
+  .bulk-key-count{margin-left:auto;font-size:11px;color:var(--text-dim);letter-spacing:0.5px}
+  .bulk-key-count span{color:var(--accent);font-weight:600}
+  /* ── Bulk progress ── */
+  .bulk-progress-bar{height:3px;background:rgba(167,139,250,0.15);border-radius:3px;margin:16px 0 8px;overflow:hidden;display:none}
+  .bulk-progress-bar.visible{display:block}
+  .bulk-progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--purple));border-radius:3px;transition:width 0.3s ease;width:0%}
+  .bulk-progress-label{font-size:11px;color:var(--text-dim);letter-spacing:0.5px;margin-bottom:0;display:none}
+  .bulk-progress-label.visible{display:block}
+  /* ── Bulk results ── */
+  .bulk-results-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;margin-bottom:16px;display:none;animation:fadeUp 0.5s ease both}
+  .bulk-results-card.visible{display:block}
+  .bulk-results-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+  .bulk-results-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px}
+  .bulk-results-stats{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .bstat{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;letter-spacing:0.5px}
+  .bstat.ok{background:var(--green-glow);color:var(--green);border:1px solid rgba(35,209,139,0.25)}
+  .bstat.fail{background:var(--red-glow);color:var(--red);border:1px solid rgba(255,79,110,0.25)}
+  .bstat.warn{background:var(--yellow-glow);color:var(--yellow);border:1px solid rgba(245,197,66,0.25)}
+  .export-csv-btn{background:none;border:1px solid rgba(35,209,139,0.35);border-radius:8px;padding:8px 16px;color:var(--green);font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:7px;letter-spacing:0.5px;white-space:nowrap}
+  .export-csv-btn:hover{background:var(--green-glow);border-color:rgba(35,209,139,0.6)}
+  .bulk-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+  .bulk-table{width:100%;border-collapse:collapse;font-size:12px}
+  .bulk-table th{background:var(--surface2);padding:10px 14px;text-align:left;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);border-bottom:1px solid var(--border);white-space:nowrap}
+  .bulk-table td{padding:11px 14px;border-bottom:1px solid rgba(30,33,48,0.6);vertical-align:middle;font-family:'IBM Plex Mono',monospace}
+  .bulk-table tr:last-child td{border-bottom:none}
+  .bulk-table tr:hover td{background:rgba(255,255,255,0.015)}
+  .bt-num{color:var(--text-dim);font-size:11px;width:36px;text-align:center}
+  .bt-key{color:var(--text-mid);word-break:break-all;max-width:160px;font-size:11px}
+  .bt-provider{color:var(--text);font-weight:500;white-space:nowrap;font-size:12px}
+  .bt-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:0.5px;font-family:'Syne',sans-serif;white-space:nowrap}
+  .bt-badge.ok{background:var(--green-glow);color:var(--green);border:1px solid rgba(35,209,139,0.2)}
+  .bt-badge.fail{background:var(--red-glow);color:var(--red);border:1px solid rgba(255,79,110,0.2)}
+  .bt-badge.warn{background:var(--yellow-glow);color:var(--yellow);border:1px solid rgba(245,197,66,0.2)}
+  .bt-badge.scanning{background:var(--accent-dim);color:var(--accent);border:1px solid rgba(79,124,255,0.2);animation:btpulse 1s ease-in-out infinite}
+  .bt-detail{color:var(--text-dim);font-size:11px;max-width:220px}
+  @keyframes btpulse{0%,100%{opacity:1}50%{opacity:0.45}}
+  /* ── Credit footer ── */
+  .credit-footer{text-align:center;margin-top:36px;padding:16px;font-size:10px;color:var(--text-dim);letter-spacing:0.5px;line-height:2;border-top:1px solid var(--border)}
+  .credit-footer strong{color:var(--text-mid)}
+  .credit-footer a{color:var(--accent);text-decoration:none;opacity:0.85}
+  .credit-footer a:hover{opacity:1;text-decoration:underline}
+
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="logo-mark">
+      <div class="logo-icon">
+        <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="1" width="34" height="34" rx="9" stroke="#4f7cff" stroke-width="1.5" stroke-opacity="0.4"/>
+          <path d="M12 18C12 14.686 14.686 12 18 12C21.314 12 24 14.686 24 18" stroke="#4f7cff" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="18" cy="21" r="3" fill="#4f7cff"/>
+          <line x1="18" y1="24" x2="18" y2="27" stroke="#4f7cff" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="15" y1="27" x2="21" y2="27" stroke="#4f7cff" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="logo-text">Key<span>Scan</span></span>
+    </div>
+    <h1>API Key Diagnostics</h1>
+    <p class="subtitle">Detect provider · Verify validity · Diagnose errors</p>
+    <div class="provider-count-badge">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      23 providers supported
+    </div>
+  </div>
+
+  <!-- ═══ MODE TABS ═══ -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" id="tabSingle" onclick="switchMode('single')">⟶ Single Key Scan</button>
+    <button class="mode-tab" id="tabBulk" onclick="switchMode('bulk')">⣿ Bulk Scan Mode</button>
+  </div>
+
+  <!-- ═══ BULK CARD ═══ -->
+  <div class="bulk-card" id="bulkCard">
+    <div class="input-label">
+      Paste API keys — one per line
+      <span class="detected-pill show" id="bulkCountPill" style="opacity:1">0 keys</span>
+    </div>
+    <textarea class="bulk-textarea" id="bulkTextarea"
+      placeholder="sk-ant-api03-xxxxx&#10;AIzaSy_xxxxx&#10;pplx-xxxxx&#10;gsk_xxxxx&#10;sk-xxxxx&#10;&#10;# Lines starting with # are ignored.&#10;Paste up to 500 keys, one per line." spellcheck="false"></textarea>
+    <div class="bulk-progress-bar" id="bulkProgressBar">
+      <div class="bulk-progress-fill" id="bulkProgressFill"></div>
+    </div>
+    <div class="bulk-progress-label" id="bulkProgressLabel"></div>
+    <div class="bulk-actions">
+      <button class="bulk-scan-btn" id="bulkScanBtn" onclick="startBulkScan()">⣿ Run Bulk Scan</button>
+      <button class="bulk-clear-btn" onclick="clearBulk()">✕ Clear</button>
+      <label class="file-upload-label" for="fileUploadInput">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import CSV / Excel
+      </label>
+      <input type="file" id="fileUploadInput" accept=".csv,.xlsx,.xls,.txt" onchange="handleFileImport(event)">
+    </div>
+  </div>
+
+  <!-- ═══ BULK RESULTS ═══ -->
+  <div class="bulk-results-card" id="bulkResultsCard">
+    <div class="bulk-results-header">
+      <div>
+        <div class="bulk-results-title">Bulk Scan Results</div>
+        <div id="bulkResultsMeta" style="font-size:11px;color:var(--text-dim);margin-top:4px;letter-spacing:0.5px"></div>
+        <div class="bulk-results-stats" id="bulkResultsStats"></div>
+      </div>
+      <button class="export-csv-btn" onclick="exportCSV()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export CSV
+      </button>
+    </div>
+    <div class="bulk-table-wrap">
+      <table class="bulk-table">
+        <thead><tr>
+          <th class="bt-num">#</th>
+          <th>Key (masked)</th>
+          <th>Provider</th>
+          <th>Status</th>
+          <th>Details</th>
+        </tr></thead>
+        <tbody id="bulkTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="input-card">
+    <div class="input-label">
+      Paste your API key
+      <span class="detected-pill" id="detectedPill">detected</span>
+    </div>
+    <div class="key-input-wrap">
+      <div style="position:relative;flex:1;display:flex;">
+        <input id="keyInput" class="key-input" type="password"
+          placeholder="sk-…  sk-ant-…  AIza…  pplx-…  nvapi-…  gsk_…"
+          autocomplete="off" spellcheck="false"/>
+        <button class="toggle-vis" id="toggleVis" title="Toggle visibility">
+          <svg id="eyeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+      <button class="scan-btn" id="scanBtn" onclick="startScan()">⟶ Scan Key</button>
+    </div>
+    <button class="providers-toggle" id="providerToggleBtn" onclick="toggleProviderGrid()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Browse all 23 supported providers — click any to prefill format
+      <svg class="arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="providers-grid-wrap" id="providersGridWrap">
+      <div class="providers-grid" id="providersGrid"></div>
+    </div>
+  </div>
+
+  <div class="scan-progress" id="scanProgress">
+    <div class="scanning-bar"></div>
+    <div class="scan-steps" id="scanSteps"></div>
+  </div>
+
+  <div class="result-card" id="resultCard">
+    <div class="result-header" id="resultHeader">
+      <div class="status-badge" id="statusBadge"></div>
+      <div>
+        <div class="result-title" id="resultTitle"></div>
+        <div class="result-subtitle" id="resultSubtitle"></div>
+      </div>
+    </div>
+    <div class="result-body" id="resultBody"></div>
+    <button class="raw-toggle" id="rawToggle" onclick="toggleRaw()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      Raw response
+    </button>
+    <div class="raw-content" id="rawContent">
+      <pre class="raw-pre" id="rawPre"></pre>
+    </div>
+  </div>
+
+  <div class="history-section" id="historySection" style="display:none">
+    <div class="section-label">
+      Recent scans
+      <button class="clear-btn" onclick="clearHistory()">clear all</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  
+  <!-- Credit Footer -->
+  <div class="credit-footer">
+    <strong>KeyScan v2.0</strong> — API Key Validator &amp; Bulk Scanner<br>
+    Created by <a href="https://www.linkedin.com/in/dhirajkumar" target="_blank" rel="noopener noreferrer">Dhiraj Kumar</a>
+    &nbsp;·&nbsp; If you replicate or build upon this tool, please credit the original author.
+  </div>
+
+</div>
+
+</div>
+<script>
+// ═══════════════════════════════════════════════════════
+// PROVIDER REGISTRY — 23 providers
+// ═══════════════════════════════════════════════════════
+const PROVIDERS = [
+  { id:'anthropic',  name:'Anthropic',         prefix:'sk-ant-…',       detect:k=>/^sk-ant-/.test(k),                          test:testAnthropic  },
+  { id:'openai',     name:'OpenAI',             prefix:'sk-…',           detect:k=>/^sk-(?!ant-)/.test(k)&&!/^sk-[a-f0-9]{32,}$/.test(k), test:testOpenAI },
+  { id:'google',     name:'Google AI (Gemini)', prefix:'AIza…',          detect:k=>/^AIza/.test(k),                              test:testGoogle     },
+  { id:'perplexity', name:'Perplexity AI',      prefix:'pplx-…',         detect:k=>/^pplx-/.test(k),                             test:testPerplexity },
+  { id:'nvidia',     name:'NVIDIA NIM',         prefix:'nvapi-…',        detect:k=>/^nvapi-/.test(k),                            test:testNvidia     },
+  { id:'xai',        name:'xAI (Grok)',         prefix:'xai-…',          detect:k=>/^xai-/.test(k),                              test:testXAI        },
+  { id:'groq',       name:'Groq',               prefix:'gsk_…',          detect:k=>/^gsk_/.test(k),                              test:testGroq       },
+  { id:'together',   name:'Together AI',        prefix:'tgp_v1_…',       detect:k=>/^tgp_v1_/.test(k),                           test:testTogether   },
+  { id:'huggingface',name:'Hugging Face',       prefix:'hf_…',           detect:k=>/^hf_/.test(k),                               test:testHuggingFace},
+  { id:'fireworks',  name:'Fireworks AI',       prefix:'fw_…',           detect:k=>/^fw_/.test(k),                               test:testFireworks  },
+  { id:'replicate',  name:'Replicate',          prefix:'r8_…',           detect:k=>/^r8_/.test(k),                               test:testReplicate  },
+  { id:'openrouter', name:'OpenRouter',         prefix:'sk-or-v1-…',     detect:k=>/^sk-or-v1-/.test(k),                         test:testOpenRouter },
+  { id:'voyage',     name:'Voyage AI',          prefix:'pa-…',           detect:k=>/^pa-/.test(k),                               test:testVoyage     },
+  { id:'ai21',       name:'AI21 Labs',          prefix:'AI21-…',         detect:k=>/^AI21-[A-Za-z0-9]{20,}$/.test(k),            test:testAI21       },
+  { id:'alephalpha', name:'Aleph Alpha',        prefix:'aa-…',           detect:k=>/^aa-[A-Za-z0-9]{20,}$/.test(k),              test:testAlephAlpha },
+  { id:'aws',        name:'AWS Bedrock',        prefix:'AKIA… / ASIA…',  detect:k=>/^(AKIA|ASIA|AROA)[A-Z0-9]{16}$/.test(k),     test:testAWS        },
+  { id:'azure',      name:'Azure OpenAI',       prefix:'Needs endpoint', detect:k=>false,                                        test:testAzure      },
+  { id:'deepseek',   name:'DeepSeek',           prefix:'sk-[hex]…',      detect:k=>/^sk-[a-f0-9]{32,}$/.test(k),                 test:testDeepSeek   },
+  { id:'cohere',     name:'Cohere',             prefix:'40-char key',    detect:k=>/^[A-Za-z0-9]{40}$/.test(k),                  test:testCohere     },
+  { id:'mistral',    name:'Mistral AI',         prefix:'32-char key',    detect:k=>/^[a-zA-Z0-9]{32}$/.test(k),                  test:testMistral    },
+  { id:'stability',  name:'Stability AI',       prefix:'sk-[long]…',     detect:k=>/^sk-[A-Za-z0-9]{48,}$/.test(k),              test:testStability  },
+  { id:'elevenlabs', name:'ElevenLabs',         prefix:'hex 32-char',    detect:k=>/^[a-f0-9]{32}$/.test(k),                     test:testElevenLabs },
+  { id:'aws_secret', name:'AWS Secret Key',     prefix:'40-char mixed',  detect:k=>/^[A-Za-z0-9\/+=]{40}$/.test(k)&&/[A-Z]/.test(k)&&/[a-z]/.test(k)&&/[0-9]/.test(k), test:testAWS }
+];
+
+// Strict prefix-first detection
+const DETECT_ORDER = ['anthropic','perplexity','nvidia','xai','groq','together','huggingface',
+  'fireworks','replicate','openrouter','voyage','ai21','alephalpha','aws','deepseek','openai','google',
+  'cohere','mistral','stability','elevenlabs','aws_secret'];
+
+function detectProvider(key) {
+  const k = key.trim();
+  for (const id of DETECT_ORDER) {
+    const p = PROVIDERS.find(x=>x.id===id);
+    if (p && p.detect(k)) return p;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════
+// API TESTS
+// ═══════════════════════════════════════════════════════
+async function testOpenAI(key) {
+  try {
+    const r = await fetch('https://api.openai.com/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`${j.data?.length||0} models accessible`,models:(j.data||[]).slice(0,6).map(m=>m.id),raw:j};
+    return classifyError(r.status,j.error?.message||j.error?.code||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testAnthropic(key) {
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/models',{headers:{'x-api-key':key,'anthropic-version':'2023-06-01'}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`${j.data?.length||0} models found`,models:(j.data||[]).slice(0,6).map(m=>m.id),raw:j};
+    return classifyError(r.status,j.error?.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testGoogle(key) {
+  try {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`${j.models?.length||0} Gemini models accessible`,models:(j.models||[]).slice(0,6).map(m=>m.name.replace('models/','')),raw:j};
+    return classifyError(j.error?.code||r.status,j.error?.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testPerplexity(key) {
+  try {
+    const r = await fetch('https://api.perplexity.ai/chat/completions',{
+      method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},
+      body:JSON.stringify({model:'llama-3.1-sonar-small-128k-online',messages:[{role:'user',content:'hi'}],max_tokens:1})
+    });
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:'Perplexity AI key authenticated. Chat completions reachable.',raw:j};
+    return classifyError(r.status,j.error?.message||j.detail||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testNvidia(key) {
+  try {
+    const r = await fetch('https://integrate.api.nvidia.com/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`NVIDIA NIM: ${j.data?.length||0} models available`,models:(j.data||[]).slice(0,6).map(m=>m.id),raw:j};
+    return classifyError(r.status,j.message||j.detail||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testXAI(key) {
+  try {
+    const r = await fetch('https://api.x.ai/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`xAI (Grok) authenticated. ${j.data?.length||0} models.`,models:(j.data||[]).slice(0,6).map(m=>m.id),raw:j};
+    return classifyError(r.status,j.error?.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testGroq(key) {
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`Groq: ${j.data?.length||0} models accessible`,models:(j.data||[]).slice(0,6).map(m=>m.id),raw:j};
+    return classifyError(r.status,j.error?.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testTogether(key) {
+  try {
+    const r = await fetch('https://api.together.xyz/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) {
+      const list = Array.isArray(j)?j:[];
+      return {ok:true,detail:`Together AI: ${list.length} models available`,models:list.slice(0,6).map(m=>m.id||m.name),raw:{model_count:list.length}};
+    }
+    return classifyError(r.status,j.error?.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testHuggingFace(key) {
+  try {
+    const r = await fetch('https://huggingface.co/api/whoami',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`Authenticated as: ${j.name||'Unknown'}`,user:j.name,plan:j.type,raw:j};
+    return classifyError(r.status,j.error||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testFireworks(key) {
+  try {
+    const r = await fetch('https://api.fireworks.ai/inference/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`Fireworks AI: ${j.data?.length||0} models`,models:(j.data||[]).slice(0,6).map(m=>m.id),raw:j};
+    return classifyError(r.status,j.error?.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testReplicate(key) {
+  try {
+    const r = await fetch('https://api.replicate.com/v1/account',{headers:{'Authorization':`Token ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`Replicate account: ${j.username||'Unknown'}`,user:j.username,raw:j};
+    return classifyError(r.status,j.detail||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testOpenRouter(key) {
+  try {
+    const r = await fetch('https://openrouter.ai/api/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`OpenRouter: ${j.data?.length||0} models available`,models:(j.data||[]).slice(0,6).map(m=>m.id),raw:{model_count:j.data?.length}};
+    return classifyError(r.status,j.error?.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testVoyage(key) {
+  try {
+    const r = await fetch('https://api.voyageai.com/v1/embeddings',{
+      method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'},
+      body:JSON.stringify({input:['test'],model:'voyage-2'})
+    });
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:'Voyage AI key authenticated. Embeddings endpoint reachable.',raw:{model:'voyage-2'}};
+    return classifyError(r.status,j.detail||j.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testAI21(key) {
+  try {
+    const r = await fetch('https://api.ai21.com/studio/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:'AI21 Labs key authenticated.',raw:j};
+    return classifyError(r.status,j.detail||j.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testAlephAlpha(key) {
+  try {
+    const r = await fetch('https://api.aleph-alpha.com/models_available',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) {
+      const list = Array.isArray(j)?j:[];
+      return {ok:true,detail:`Aleph Alpha: ${list.length} models`,models:list.slice(0,6).map(m=>m.name),raw:{count:list.length}};
+    }
+    return classifyError(r.status,j.detail||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testCohere(key) {
+  try {
+    const r = await fetch('https://api.cohere.com/v1/check-api-key',{
+      method:'POST',headers:{'Authorization':`Bearer ${key}`,'Content-Type':'application/json'}
+    });
+    const j = await r.json();
+    if (r.ok&&j.valid!==false) return {ok:true,detail:'Cohere key validated.',raw:j};
+    if (j.valid===false) return {ok:false,status:'INVALID_KEY',detail:'Key rejected by Cohere — invalid or revoked.',raw:j};
+    return classifyError(r.status,j.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testMistral(key) {
+  try {
+    const r = await fetch('https://api.mistral.ai/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`Mistral AI: ${j.data?.length||0} models`,models:(j.data||[]).slice(0,6).map(m=>m.id),raw:j};
+    return classifyError(r.status,j.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testDeepSeek(key) {
+  try {
+    const r = await fetch('https://api.deepseek.com/v1/models',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:'DeepSeek key authenticated.',raw:j};
+    return classifyError(r.status,j.error?.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testStability(key) {
+  try {
+    const r = await fetch('https://api.stability.ai/v1/user/account',{headers:{'Authorization':`Bearer ${key}`}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`Stability AI account found. Credits: ${j.credits||'N/A'}`,raw:j};
+    return classifyError(r.status,j.message||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testElevenLabs(key) {
+  try {
+    const r = await fetch('https://api.elevenlabs.io/v1/user',{headers:{'xi-api-key':key}});
+    const j = await r.json();
+    if (r.ok) return {ok:true,detail:`ElevenLabs: ${j.subscription?.tier||'Unknown'} tier`,user:j.first_name,raw:j};
+    return classifyError(r.status,j.detail?.message||j.detail||'Unknown',j);
+  } catch(e){return networkErr(e)}
+}
+async function testAzure(key) {
+  return {ok:false,status:'NEEDS_ENDPOINT',warning:true,
+    detail:'Azure OpenAI keys require a resource endpoint URL (e.g. https://YOUR_RESOURCE.openai.azure.com). Cannot auto-validate without it. Key format appears valid.',
+    raw:{note:'Provide endpoint URL + API key for Azure OpenAI validation.'}};
+}
+async function testAWS(key) {
+  return {ok:false,status:'NEEDS_SECRET',warning:true,
+    detail:'AWS Bedrock requires both Access Key ID and Secret Access Key, plus region and SigV4 signing. Cannot auto-validate in-browser from a single key alone.',
+    raw:{note:'AWS requires SigV4 multi-step signing — not possible in browser alone.'}};
+}
+
+function classifyError(httpStatus,message,raw) {
+  const s=String(httpStatus), msg=String(message||'').toLowerCase();
+  if(s==='401'||msg.includes('invalid_api_key')||msg.includes('invalid api key')||(msg.includes('invalid')&&msg.includes('key'))||msg.includes('unauthorized')||msg.includes('authentication'))
+    return {ok:false,status:'INVALID_KEY',detail:'Authentication failed — key is invalid, expired, or revoked.',raw};
+  if(s==='403'||msg.includes('forbidden')||msg.includes('permission denied')||msg.includes('not allowed'))
+    return {ok:false,status:'PERMISSION_DENIED',detail:'Key exists but lacks permission for this resource or endpoint.',raw};
+  if(msg.includes('quota')||msg.includes('exceeded')||msg.includes('out of credits')||(msg.includes('billing')&&!msg.includes('payment')))
+    return {ok:false,status:'QUOTA_EXCEEDED',detail:'Usage quota or credit limit reached. Key may be valid but account is out of credits.',raw,warning:true};
+  if(s==='429'||msg.includes('rate limit')||msg.includes('too many'))
+    return {ok:false,status:'RATE_LIMITED',detail:'Too many requests. Key appears valid but is currently rate-limited. Try again shortly.',raw,warning:true};
+  if(s==='402'||msg.includes('payment')||msg.includes('subscription')||msg.includes('billing'))
+    return {ok:false,status:'BILLING_ISSUE',detail:'Payment or subscription issue. Key may be valid but account has no active plan.',raw,warning:true};
+  if(s==='404')
+    return {ok:false,status:'NOT_FOUND',detail:'Endpoint not found. Provider detection may have misidentified this key format.',raw};
+  if(s.startsWith('5'))
+    return {ok:false,status:`SERVER_ERROR_${s}`,detail:`Provider returned a server error (${s}). The key may be valid — try again later.`,raw,warning:true};
+  return {ok:false,status:`HTTP_${s}`,detail:message||'Unknown error from provider.',raw};
+}
+function networkErr(e){return {ok:false,status:'NETWORK_ERROR',detail:`Could not reach the API. Check your connection or if the provider blocks browser requests. (${e.message})`,raw:{error:e.message}}}
+
+// ═══════════════════════════════════════════════════════
+// UI
+// ═══════════════════════════════════════════════════════
+let scanHistory=JSON.parse(localStorage.getItem('keyscan_h')||'[]');
+
+const PREFILL={
+  openai:'sk-',anthropic:'sk-ant-api03-',google:'AIzaSy',perplexity:'pplx-',
+  nvidia:'nvapi-',xai:'xai-',groq:'gsk_',together:'tgp_v1_',huggingface:'hf_',
+  fireworks:'fw_',replicate:'r8_',openrouter:'sk-or-v1-',voyage:'pa-',
+  ai21:'AI21-',alephalpha:'aa-',aws:'AKIAXXX',azure:'',deepseek:'sk-',
+  cohere:'',mistral:'',stability:'sk-',elevenlabs:'',aws_secret:''
+};
+
+function buildProviderGrid(){
+  document.getElementById('providersGrid').innerHTML=PROVIDERS.map(p=>`
+    <div class="provider-chip" onclick="prefillProvider('${p.id}')">
+      <div class="chip-name">${p.name}</div>
+      <div class="chip-prefix">${p.prefix}</div>
+    </div>`).join('');
+}
+
+function toggleProviderGrid(){
+  document.getElementById('providerToggleBtn').classList.toggle('open');
+  document.getElementById('providersGridWrap').classList.toggle('open');
+}
+
+function prefillProvider(id){
+  const inp=document.getElementById('keyInput');
+  inp.value=PREFILL[id]||'';
+  inp.type='text'; inp.focus();
+  inp.setSelectionRange(inp.value.length,inp.value.length);
+  document.getElementById('providerToggleBtn').classList.remove('open');
+  document.getElementById('providersGridWrap').classList.remove('open');
+  // trigger pill
+  inp.dispatchEvent(new Event('input'));
+}
+
+function maskKey(k){
+  if(k.length<=10)return'•'.repeat(k.length);
+  return k.slice(0,6)+'•'.repeat(Math.min(k.length-10,24))+k.slice(-4);
+}
+function timeAgo(ts){
+  const d=Date.now()-ts;
+  if(d<60000)return'just now';
+  if(d<3600000)return`${Math.floor(d/60000)}m ago`;
+  if(d<86400000)return`${Math.floor(d/3600000)}h ago`;
+  return`${Math.floor(d/86400000)}d ago`;
+}
+
+document.getElementById('toggleVis').addEventListener('click',()=>{
+  const inp=document.getElementById('keyInput'),icon=document.getElementById('eyeIcon');
+  if(inp.type==='password'){
+    inp.type='text';
+    icon.innerHTML=`<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+  } else {
+    inp.type='password';
+    icon.innerHTML=`<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+  }
+});
+
+document.getElementById('keyInput').addEventListener('input',e=>{
+  const key=e.target.value.trim(),pill=document.getElementById('detectedPill');
+  if(!key){pill.classList.remove('show');document.title='KeyScan — API Key Validator';return}
+  const p=detectProvider(key);
+  if(p){pill.textContent=`↗ ${p.name}`;pill.classList.add('show');document.title=`KeyScan — ${p.name} detected`;}
+  else{pill.classList.remove('show');document.title='KeyScan — API Key Validator';}
+});
+
+document.getElementById('keyInput').addEventListener('keydown',e=>{if(e.key==='Enter')startScan()});
+
+async function startScan(){
+  const key=document.getElementById('keyInput').value.trim();
+  if(!key||key.length<6){shakeInput();return}
+  const btn=document.getElementById('scanBtn');
+  btn.disabled=true;btn.textContent='⟳ Scanning...';
+  document.getElementById('resultCard').classList.remove('visible');
+  document.getElementById('resultCard').style.display='none';
+  const sp=document.getElementById('scanProgress');
+  sp.classList.add('visible');
+
+  const steps=[
+    {text:'Analyzing key structure & length…'},
+    {text:'Matching against provider signatures…'},
+    {text:'Connecting to API endpoint…'},
+    {text:'Verifying authentication credentials…'},
+    {text:'Classifying response & error codes…'}
+  ];
+  renderSteps(steps,-1);await sleep(250);
+  renderSteps(steps,0);await sleep(320);renderSteps(steps,0,'done');
+  renderSteps(steps,1);await sleep(280);
+  const provider=detectProvider(key);
+  renderSteps(steps,1,'done');
+
+  if(!provider){
+    await sleep(200);finishScan(btn,sp);
+    const supported=PROVIDERS.map(p=>p.name).join(', ');
+    showResult({ok:false,providerName:'Unknown',providerId:'unknown',status:'UNKNOWN_PROVIDER',
+      detail:`Key pattern did not match any known provider. Supported: ${supported}.`,
+      raw:{key_prefix:key.slice(0,8)+'…',key_length:key.length}},key);
+    return;
+  }
+
+  renderSteps(steps,2);await sleep(300);renderSteps(steps,2,'done');
+  renderSteps(steps,3);
+
+  let result;
+  try{result=await provider.test(key);}
+  catch(e){result={ok:false,status:'RUNTIME_ERROR',detail:e.message,raw:{error:e.toString()}};}
+
+  renderSteps(steps,3,result.ok?'done':(result.warning?'warn':'error'));
+  renderSteps(steps,4);await sleep(280);renderSteps(steps,4,'done');
+  await sleep(280);
+  finishScan(btn,sp);
+  showResult({...result,providerName:provider.name,providerId:provider.id},key);
+  addToHistory(key,provider,result);
+}
+
+function renderSteps(steps,activeIdx,override){
+  document.getElementById('scanSteps').innerHTML=steps.map((s,i)=>{
+    let cls='',icon='○';
+    if(i<activeIdx){cls='done';icon='✓';}
+    else if(i===activeIdx){
+      if(override==='done'){cls='done';icon='✓';}
+      else if(override==='error'){cls='error-step';icon='✗';}
+      else if(override==='warn'){cls='warn-step';icon='!';}
+      else{cls='active';icon='◌';}
+    }
+    return`<div class="scan-step ${cls}"><div class="step-icon">${icon}</div><span>${s.text}</span></div>`;
+  }).join('');
+}
+
+function finishScan(btn,sp){
+  btn.disabled=false;btn.textContent='⟶ Scan Key';sp.classList.remove('visible');
+}
+
+function showResult(result,key){
+  const card=document.getElementById('resultCard');
+  const state=result.ok?'ok':(result.warning?'warn':'fail');
+  const stateLabel=result.ok?'WORKING':(result.warning?'CAUTION':'FAILED');
+  const emoji=result.ok?'✓':(result.warning?'⚠':'✗');
+
+  document.getElementById('resultHeader').className=`result-header status-${state}`;
+  document.getElementById('statusBadge').className=`status-badge ${state}`;
+  document.getElementById('statusBadge').textContent=emoji;
+  document.getElementById('resultTitle').textContent=result.ok?'Key is Working':(result.warning?'Key Issue Detected':'Key Validation Failed');
+  document.getElementById('resultSubtitle').textContent=result.ok?`Authenticated successfully with ${result.providerName}`:`${result.status.replace(/_/g,' ')} · ${result.providerName}`;
+
+  let html=`
+    <div class="result-field"><div class="field-label">Provider</div><div class="field-value"><span class="provider-tag ${result.providerId}">${result.providerName}</span></div></div>
+    <div class="result-field"><div class="field-label">Status</div><div class="field-value ${state==='ok'?'ok-color':state==='warn'?'warn-color':'fail-color'}">${stateLabel}</div></div>
+    <div class="result-field"><div class="field-label">Key (masked)</div><div class="field-value mono dim">${maskKey(key)}</div></div>
+    <div class="result-field"><div class="field-label">Error Code</div><div class="field-value ${result.ok?'ok-color dim':'fail-color'}">${result.ok?'none':result.status}</div></div>
+  `;
+  if(!result.ok)
+    html+=`<div class="result-field full"><div class="field-label">Diagnosis</div><div class="error-block">${escHtml(result.detail)}</div></div>`;
+  else
+    html+=`<div class="result-field full"><div class="field-label">Details</div><div class="field-value">${escHtml(result.detail)}</div></div>`;
+  if(result.models?.length)
+    html+=`<div class="result-field full"><div class="field-label">Available models (sample)</div><div class="field-value mono dim">${result.models.join(', ')}</div></div>`;
+  if(result.user)
+    html+=`<div class="result-field"><div class="field-label">Account</div><div class="field-value">${escHtml(result.user)}</div></div>`;
+  if(result.plan)
+    html+=`<div class="result-field"><div class="field-label">Plan / Tier</div><div class="field-value dim">${escHtml(result.plan)}</div></div>`;
+
+  document.getElementById('resultBody').innerHTML=html;
+  document.getElementById('rawPre').textContent=JSON.stringify(result.raw,null,2);
+  document.getElementById('rawContent').classList.remove('open');
+  document.getElementById('rawToggle').classList.remove('open');
+  card.style.display='block';card.classList.add('visible');
+}
+
+function toggleRaw(){
+  document.getElementById('rawToggle').classList.toggle('open');
+  document.getElementById('rawContent').classList.toggle('open');
+}
+
+function addToHistory(key,provider,result){
+  const state=result.ok?'ok':(result.warning?'warn':'fail');
+  scanHistory.unshift({key:maskKey(key),provider:provider.name,providerId:provider.id,state,status:result.status||'OK',ts:Date.now()});
+  if(scanHistory.length>12)scanHistory=scanHistory.slice(0,12);
+  localStorage.setItem('keyscan_h',JSON.stringify(scanHistory));
+  renderHistory();
+}
+
+function renderHistory(){
+  const section=document.getElementById('historySection'),list=document.getElementById('historyList');
+  if(!scanHistory.length){section.style.display='none';return}
+  section.style.display='block';
+  list.innerHTML=scanHistory.map((h,i)=>`
+    <div class="history-item" style="animation-delay:${i*0.04}s">
+      <div class="h-dot ${h.state}"></div>
+      <div class="h-key">${h.key}</div>
+      <div class="h-provider">${h.provider}</div>
+      <div class="h-time">${timeAgo(h.ts)}</div>
+    </div>`).join('');
+}
+
+function clearHistory(){scanHistory=[];localStorage.removeItem('keyscan_h');renderHistory()}
+
+function shakeInput(){
+  const inp=document.getElementById('keyInput');
+  inp.style.borderColor='var(--red)';
+  setTimeout(()=>{inp.style.borderColor=''},800);
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function escHtml(str){
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// BULK SCAN MODULE — KeyScan v2.0
+// Original tool created by Dhiraj Kumar. Please credit if replicating.
+// ═══════════════════════════════════════════════════════════════════════
+
+let bulkResults  = [];
+let bulkScanning = false;
+
+function switchMode(mode) {
+  const inputCard  = document.querySelector('.input-card');
+  const bulkCard   = document.getElementById('bulkCard');
+  const scanProg   = document.getElementById('scanProgress');
+  const resultCard = document.getElementById('resultCard');
+  document.getElementById('tabSingle').classList.toggle('active', mode === 'single');
+  document.getElementById('tabBulk').classList.toggle('active',   mode === 'bulk');
+  if (mode === 'single') {
+    inputCard.style.display = 'block';
+    bulkCard.classList.remove('visible');
+    scanProg.classList.remove('visible');
+  } else {
+    inputCard.style.display = 'none';
+    bulkCard.classList.add('visible');
+    scanProg.classList.remove('visible');
+    resultCard.style.display = 'none';
+    resultCard.classList.remove('visible');
+  }
+}
+
+// Live key counter
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('bulkTextarea').addEventListener('input', updateBulkCount);
+});
+
+function updateBulkCount() {
+  const n = parseBulkKeys().length;
+  document.getElementById('bulkCountPill').textContent = n + ' key' + (n !== 1 ? 's' : '');
+}
+
+function parseBulkKeys() {
+  return document.getElementById('bulkTextarea').value
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length >= 6 && !l.startsWith('#'));
+}
+
+function clearBulk() {
+  document.getElementById('bulkTextarea').value = '';
+  updateBulkCount();
+  document.getElementById('bulkResultsCard').classList.remove('visible');
+  document.getElementById('bulkProgressBar').classList.remove('visible');
+  document.getElementById('bulkProgressLabel').classList.remove('visible');
+  bulkResults = [];
+}
+
+// ── File Import ──────────────────────────────────────────────────────────────
+async function handleFileImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const name = file.name.toLowerCase();
+  let keys = [];
+  if (name.endsWith('.csv') || name.endsWith('.txt')) {
+    const text = await file.text();
+    keys = text.split(/[\n\r,;\t]+/)
+      .map(l => l.replace(/["'`]/g, '').trim())
+      .filter(l => l.length >= 6 && !/^(key|api_key|token|value|header|name|column)$/i.test(l));
+  } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+    if (!window.XLSX) {
+      await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+    }
+    const ab = await file.arrayBuffer();
+    const wb = window.XLSX.read(ab, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = window.XLSX.utils.sheet_to_json(ws, { header: 1 });
+    keys = data.flat()
+      .map(c => String(c || '').trim())
+      .filter(c => c.length >= 6 && !/^(key|api_key|token|value|header|name|column)$/i.test(c));
+  }
+  document.getElementById('bulkTextarea').value = keys.join('\n');
+  updateBulkCount();
+  event.target.value = '';
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// ── Bulk Scan Engine ─────────────────────────────────────────────────────────
+async function startBulkScan() {
+  if (bulkScanning) return;
+  const keys = parseBulkKeys();
+  if (!keys.length) return;
+
+  bulkScanning = true;
+  bulkResults  = [];
+
+  const btn    = document.getElementById('bulkScanBtn');
+  const bar    = document.getElementById('bulkProgressBar');
+  const lbl    = document.getElementById('bulkProgressLabel');
+  const tbody  = document.getElementById('bulkTableBody');
+  const card   = document.getElementById('bulkResultsCard');
+
+  btn.disabled = true;
+  btn.textContent = '⟳ Scanning…';
+  bar.classList.add('visible');
+  lbl.classList.add('visible');
+  lbl.textContent = 'Preparing scan…';
+  card.classList.add('visible');
+  document.getElementById('bulkResultsStats').innerHTML = '';
+  document.getElementById('bulkResultsMeta').textContent = '';
+
+  // Pre-populate table with scanning placeholders
+  tbody.innerHTML = keys.map((k, i) => `
+    <tr id="brow-${i}">
+      <td class="bt-num">${i + 1}</td>
+      <td class="bt-key">${maskKey(k)}</td>
+      <td class="bt-provider" id="bprov-${i}" style="color:var(--text-dim);font-size:11px">detecting…</td>
+      <td><span class="bt-badge scanning" id="bstat-${i}">◌ scanning</span></td>
+      <td class="bt-detail" id="bdetail-${i}" style="color:var(--text-dim)">—</td>
+    </tr>`).join('');
+
+  let completed = 0;
+  const CONCURRENCY = 4;
+
+  async function processKey(k, i) {
+    const provider    = detectProvider(k);
+    const provCell    = document.getElementById('bprov-' + i);
+    const statCell    = document.getElementById('bstat-' + i);
+    const detailCell  = document.getElementById('bdetail-' + i);
+
+    if (provider) {
+      provCell.textContent = provider.name;
+      provCell.style.color = '';
+      provCell.style.fontSize = '';
+    } else {
+      provCell.innerHTML = '<span style="color:var(--text-dim);font-size:11px">Unknown</span>';
+    }
+
+    let result;
+    try {
+      result = provider
+        ? await provider.test(k)
+        : { ok: false, status: 'UNKNOWN_PROVIDER', detail: 'Key format did not match any known provider.', raw: {} };
+    } catch (e) {
+      result = { ok: false, status: 'RUNTIME_ERROR', detail: e.message, raw: {} };
+    }
+
+    const state = result.ok ? 'ok' : (result.warning ? 'warn' : 'fail');
+    const label = result.ok ? '✓ Valid' : (result.warning ? '⚠ Caution' : '✗ Failed');
+    statCell.className   = 'bt-badge ' + state;
+    statCell.textContent = label;
+    detailCell.textContent = (result.detail || '').slice(0, 90);
+    detailCell.style.color = '';
+
+    completed++;
+    const pct = Math.round((completed / keys.length) * 100);
+    document.getElementById('bulkProgressFill').style.width = pct + '%';
+    lbl.textContent = 'Scanning ' + completed + ' / ' + keys.length + '  (' + pct + '%)';
+
+    bulkResults.push({
+      index:      i + 1,
+      key_masked: maskKey(k),
+      provider:   provider ? provider.name : 'Unknown',
+      state,
+      status:     result.ok ? 'VALID' : (result.status || 'ERROR'),
+      detail:     result.detail || ''
+    });
+  }
+
+  // Run in concurrent batches
+  for (let i = 0; i < keys.length; i += CONCURRENCY) {
+    const batch = keys.slice(i, i + CONCURRENCY).map((k, j) => processKey(k, i + j));
+    await Promise.all(batch);
+  }
+
+  // Summary
+  const okC   = bulkResults.filter(r => r.state === 'ok').length;
+  const warnC = bulkResults.filter(r => r.state === 'warn').length;
+  const failC = bulkResults.filter(r => r.state === 'fail').length;
+
+  document.getElementById('bulkResultsStats').innerHTML =
+    '<span class="bstat ok">✓ ' + okC + ' Valid</span>' +
+    '<span class="bstat warn">⚠ ' + warnC + ' Caution</span>' +
+    '<span class="bstat fail">✗ ' + failC + ' Failed</span>';
+
+  document.getElementById('bulkResultsMeta').textContent =
+    keys.length + ' keys scanned · ' + new Date().toLocaleTimeString();
+
+  lbl.textContent = '✓ Scan complete — ' + keys.length + ' keys processed.';
+  btn.disabled    = false;
+  btn.textContent = '⣿ Run Bulk Scan';
+  bulkScanning    = false;
+}
+
+// ── CSV Export ───────────────────────────────────────────────────────────────
+function exportCSV() {
+  if (!bulkResults.length) return;
+  const headers = ['#', 'Key (masked)', 'Provider', 'State', 'Status Code', 'Details'];
+  const rows = bulkResults.map(r => [
+    r.index,
+    '"' + r.key_masked + '"',
+    '"' + r.provider + '"',
+    r.state.toUpperCase(),
+    r.status,
+    '"' + (r.detail || '').replace(/"/g, "'") + '"'
+  ]);
+  const csv  = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'keyscan-bulk-results-' + Date.now() + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+
+buildProviderGrid();
+renderHistory();
+</script>
+</body>
+</html>
